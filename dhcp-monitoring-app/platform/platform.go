@@ -6,13 +6,14 @@ import (
 	"log"
 	"sync"
 
+	"dhcp-monitoring-app/config"
 	"dhcp-monitoring-app/dhcp"
 	"dhcp-monitoring-app/kafka"
 	"dhcp-monitoring-app/simulator"
 )
 
 type DHCPSecurityPlatform struct {
-	config        kafka.KafkaConfig
+	config        *config.AppConfig
 	eventProducer *kafka.DHCPEventProducer
 	alertProducer *kafka.DHCPEventProducer
 	processor     *dhcp.DHCPEventProcessor
@@ -20,15 +21,17 @@ type DHCPSecurityPlatform struct {
 	simulator     *simulator.NetworkMonitoringSimulator
 }
 
-func NewDHCPSecurityPlatform(config kafka.KafkaConfig) (*DHCPSecurityPlatform, error) {
+func NewDHCPSecurityPlatform(cfg *config.AppConfig) (*DHCPSecurityPlatform, error) {
+	kafkaConfig := cfg.GetKafkaConfig()
+
 	// Create event producer
-	eventProducer, err := kafka.NewDHCPEventProducer(config.Brokers, config.DHCPEventsTopic)
+	eventProducer, err := kafka.NewDHCPEventProducer(kafkaConfig.Brokers, kafkaConfig.DHCPEventsTopic)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create event producer: %w", err)
 	}
 
 	// Create alert producer
-	alertProducer, err := kafka.NewDHCPEventProducer(config.Brokers, config.AlertsTopic)
+	alertProducer, err := kafka.NewDHCPEventProducer(kafkaConfig.Brokers, kafkaConfig.AlertsTopic)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create alert producer: %w", err)
 	}
@@ -38,20 +41,23 @@ func NewDHCPSecurityPlatform(config kafka.KafkaConfig) (*DHCPSecurityPlatform, e
 
 	// Create consumer
 	consumer, err := kafka.NewDHCPEventConsumer(
-		config.Brokers,
-		config.ConsumerGroup,
-		[]string{config.DHCPEventsTopic},
+		kafkaConfig.Brokers,
+		kafkaConfig.ConsumerGroup,
+		[]string{kafkaConfig.DHCPEventsTopic},
 		processor,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create consumer: %w", err)
 	}
 
-	// Create simulator
-	sim := simulator.NewNetworkMonitoringSimulator(eventProducer)
+	// Create simulator (only if enabled)
+	var sim *simulator.NetworkMonitoringSimulator
+	if cfg.App.Simulation.Enabled {
+		sim = simulator.NewNetworkMonitoringSimulatorWithConfig(eventProducer, &cfg.App.Simulation)
+	}
 
 	return &DHCPSecurityPlatform{
-		config:        config,
+		config:        cfg,
 		eventProducer: eventProducer,
 		alertProducer: alertProducer,
 		processor:     processor,

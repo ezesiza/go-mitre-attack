@@ -7,21 +7,33 @@ import (
 	"os/signal"
 	"syscall"
 
-	"dhcp-monitoring-app/kafka"
+	"dhcp-monitoring-app/config"
+
 	"dhcp-monitoring-app/platform"
 )
 
 func main() {
-	// Kafka configuration
-	config := kafka.KafkaConfig{
-		Brokers:         []string{"localhost:9092"},
-		DHCPEventsTopic: "dhcp-security-events",
-		AlertsTopic:     "dhcp-security-alerts",
-		ConsumerGroup:   "dhcp-security-processors",
+	// Load configuration
+	cfg := config.NewDefaultConfig()
+	if err := cfg.LoadFromEnvironment(); err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	// Create platform
-	p, err := platform.NewDHCPSecurityPlatform(config)
+	// Validate configuration
+	if err := cfg.Validate(); err != nil {
+		log.Fatalf("Invalid configuration: %v", err)
+	}
+
+	// Log configuration summary
+	log.Printf("Starting DHCP Security Platform with configuration:")
+	log.Printf("  Environment: %s", cfg.App.Environment)
+	log.Printf("  Kafka Brokers: %v", cfg.Kafka.Brokers)
+	log.Printf("  DHCP Events Topic: %s", cfg.Kafka.DHCPEventsTopic)
+	log.Printf("  Alerts Topic: %s", cfg.Kafka.AlertsTopic)
+	log.Printf("  Simulation Enabled: %t", cfg.App.Simulation.Enabled)
+
+	// Create platform with injected configuration
+	p, err := platform.NewDHCPSecurityPlatform(cfg)
 	if err != nil {
 		log.Fatalf("Failed to create platform: %v", err)
 	}

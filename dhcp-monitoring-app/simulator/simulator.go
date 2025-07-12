@@ -4,22 +4,41 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"time"
 
+	"dhcp-monitoring-app/config"
 	"dhcp-monitoring-app/dhcp"
 	"dhcp-monitoring-app/kafka"
 )
 
 type NetworkMonitoringSimulator struct {
 	producer *kafka.DHCPEventProducer
+	config   *config.SimulationConfig
 }
 
 func NewNetworkMonitoringSimulator(producer *kafka.DHCPEventProducer) *NetworkMonitoringSimulator {
-	return &NetworkMonitoringSimulator{producer: producer}
+	return &NetworkMonitoringSimulator{
+		producer: producer,
+		config:   &config.SimulationConfig{},
+	}
+}
+
+// NewNetworkMonitoringSimulatorWithConfig creates a simulator with custom configuration
+func NewNetworkMonitoringSimulatorWithConfig(producer *kafka.DHCPEventProducer, cfg *config.SimulationConfig) *NetworkMonitoringSimulator {
+	return &NetworkMonitoringSimulator{
+		producer: producer,
+		config:   cfg,
+	}
 }
 
 func (s *NetworkMonitoringSimulator) SimulateEvents(ctx context.Context) {
-	ticker := time.NewTicker(2 * time.Second)
+	interval := s.config.Interval
+	if interval == 0 {
+		interval = 2 * time.Second // Default interval
+	}
+
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	eventID := 1
@@ -38,12 +57,22 @@ func (s *NetworkMonitoringSimulator) SimulateEvents(ctx context.Context) {
 }
 
 func (s *NetworkMonitoringSimulator) generateRandomEvent(id int) dhcp.DHCPSecurityEvent {
-	eventTypes := []dhcp.DHCPEventType{
-		dhcp.DHCPDiscover, dhcp.DHCPOffer, dhcp.DHCPRequest, dhcp.DHCPAck,
-		dhcp.DHCPRogueServer, dhcp.DHCPStarvation, dhcp.DHCPSpoofing,
+	// Use configured event types if available, otherwise use defaults
+	eventTypes := s.config.EventTypes
+	if len(eventTypes) == 0 {
+		eventTypes = []string{
+			"DHCP_DISCOVER", "DHCP_OFFER", "DHCP_REQUEST", "DHCP_ACK",
+			"DHCP_ROGUE_SERVER", "DHCP_STARVATION", "DHCP_SPOOFING",
+		}
 	}
 
-	eventType := eventTypes[id%len(eventTypes)]
+	// Convert string event types to DHCPEventType
+	dhcpEventTypes := make([]dhcp.DHCPEventType, len(eventTypes))
+	for i, eventType := range eventTypes {
+		dhcpEventTypes[i] = dhcp.DHCPEventType(eventType)
+	}
+
+	eventType := dhcpEventTypes[id%len(dhcpEventTypes)]
 	severity := "LOW"
 
 	switch eventType {
@@ -53,12 +82,21 @@ func (s *NetworkMonitoringSimulator) generateRandomEvent(id int) dhcp.DHCPSecuri
 		severity = "MEDIUM"
 	}
 
+	// Use configured source IPs if available, otherwise use defaults
+	sourceIPs := s.config.SourceIPs
+	if len(sourceIPs) == 0 {
+		sourceIPs = []string{"192.168.1.100", "192.168.1.101", "192.168.1.102"}
+	}
+
+	// Randomly select a source IP from the configured list
+	selectedIP := sourceIPs[rand.Intn(len(sourceIPs))]
+
 	return dhcp.DHCPSecurityEvent{
 		ID:            fmt.Sprintf("event_%d", id),
 		Timestamp:     time.Now(),
 		EventType:     eventType,
 		Severity:      severity,
-		SourceIP:      fmt.Sprintf("192.168.1.%d", (id%254)+1),
+		SourceIP:      selectedIP,
 		DestIP:        "192.168.1.1",
 		ClientMAC:     fmt.Sprintf("aa:bb:cc:dd:ee:%02x", id%256),
 		ServerMAC:     "00:11:22:33:44:55",

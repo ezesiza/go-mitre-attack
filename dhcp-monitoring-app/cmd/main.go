@@ -33,7 +33,16 @@ func main() {
 	log.Printf("  Simulation Enabled: %t", cfg.App.Simulation.Enabled)
 
 	// Create platform with injected configuration
-	p, err := platform.NewDHCPSecurityPlatform(cfg)
+	// p, err := platform.NewDHCPSecurityPlatform(cfg)
+	container, err := platform.NewDefaultServiceContainer(cfg)
+	if err != nil {
+		log.Fatalf("Failed to create service container: %v", err)
+	}
+
+	// Build platform using the builder pattern
+	p, err := platform.NewPlatformBuilder().WithServiceContainer(container).Build()
+	// if err != nil {
+	// log.Fatalf("Failed to build platform: %v", err)
 	if err != nil {
 		log.Fatalf("Failed to create platform: %v", err)
 	}
@@ -59,4 +68,5 @@ func main() {
 	}
 
 	log.Println("Platform shutdown complete")
+	// }
 }

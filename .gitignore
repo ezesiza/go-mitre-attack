@@ -15,6 +15,7 @@ vendor/
 
 # Go workspace file
 *.code-workspace
+main.go
 
 # IDE/editor files
 .idea/

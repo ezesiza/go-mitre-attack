@@ -45,49 +45,6 @@ type DefaultServiceContainer struct {
 // func NewDHCPSecurityPlatform(cfg *config.AppConfig) (*DHCPSecurityPlatform, error) {
 func NewDHCPSecurityPlatform(container ServiceContainer) *DHCPSecurityPlatform {
 
-	/* kafkaConfig := cfg.GetKafkaConfig()
-
-	// Create event producer
-	eventProducer, err := kafka.NewDHCPEventProducer(kafkaConfig.Brokers, kafkaConfig.DHCPEventsTopic)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create event producer: %w", err)
-	}
-
-	// Create alert producer
-	alertProducer, err := kafka.NewDHCPEventProducer(kafkaConfig.Brokers, kafkaConfig.AlertsTopic)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create alert producer: %w", err)
-	}
-
-	// Create processor
-	processor := dhcp.NewDHCPEventProcessor(alertProducer)
-
-	// Create consumer
-	consumer, err := kafka.NewDHCPEventConsumer(
-		kafkaConfig.Brokers,
-		kafkaConfig.ConsumerGroup,
-		[]string{kafkaConfig.DHCPEventsTopic},
-		processor,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create consumer: %w", err)
-	}
-
-	// Create simulator (only if enabled)
-	var sim *simulator.NetworkMonitoringSimulator
-	if cfg.App.Simulation.Enabled {
-		sim = simulator.NewNetworkMonitoringSimulatorWithConfig(eventProducer, &cfg.App.Simulation)
-	}
-
-	return &DHCPSecurityPlatform{
-		config:        cfg,
-		eventProducer: eventProducer,
-		alertProducer: alertProducer,
-		processor:     processor,
-		consumer:      consumer,
-		simulator:     sim,
-	}, nil */
-
 	ctx, cancel := context.WithCancel(context.Background())
 	return &DHCPSecurityPlatform{
 		container: container,
@@ -110,12 +67,6 @@ func (p *DHCPSecurityPlatform) Start(ctx context.Context) error {
 		}
 	}()
 
-	// Start simulator (for demo purposes)
-	// p.wg.Add(1)
-	// go func() {
-	// 	defer p.wg.Done()
-	// 	p.simulator.SimulateEvents(ctx)
-	// }()
 	if p.container.GetEventSimulator() != nil {
 		p.wg.Add(1)
 		go func() {
@@ -125,24 +76,12 @@ func (p *DHCPSecurityPlatform) Start(ctx context.Context) error {
 	}
 
 	log.Println("DHCP Security Platform started successfully")
-	// p.wg.Wait()
-	// return nil
-	// Wait for context cancellation or platform shutdown
 	<-ctx.Done()
 	return ctx.Err()
 }
 
 // Stop gracefully shuts down all platform components
 func (p *DHCPSecurityPlatform) Stop() error {
-	/* if err := p.consumer.Close(); err != nil {
-		log.Printf("Error closing consumer: %v", err)
-	}
-	if err := p.eventProducer.Close(); err != nil {
-		log.Printf("Error closing event producer: %v", err)
-	}
-	if err := p.alertProducer.Close(); err != nil {
-		log.Printf("Error closing alert producer: %v", err)
-	} */
 
 	log.Println("Stopping DHCP Security Platform...")
 
@@ -168,11 +107,7 @@ func (f *DefaultComponentFactory) CreateEventProducer(brokers []string, topic st
 
 // CreateEventConsumer creates a new event consumer
 func (f *DefaultComponentFactory) CreateEventConsumer(brokers []string, groupID string, topics []string, processor EventProcessor) (EventConsumer, error) {
-	// Type assertion to get the concrete processor
-	// dhcpProcessor, ok := processor.(*dhcp.DHCPEventProcessor)
-	// if !ok {
-	// 	return nil, fmt.Errorf("invalid processor type")
-	// }
+
 	return kafka.NewDHCPEventConsumer(brokers, groupID, topics, processor)
 }
 

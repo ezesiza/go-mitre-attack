@@ -7,16 +7,21 @@ import (
 	"time"
 )
 
+type EventProducer interface {
+	PublishEvent(event DHCPSecurityEvent) error
+	Close() error
+}
+
 type DHCPEventProcessor struct {
 	// alertProducer will be set later, after Kafka modularization
-	alertProducer interface{}
+	alertProducer EventProducer
 	eventCache    map[string][]DHCPSecurityEvent
 	cacheMutex    sync.RWMutex
 	alertRules    []SecurityRule
 }
 
 // NewDHCPEventProcessor creates a new event processor
-func NewDHCPEventProcessor(alertProducer interface{}) *DHCPEventProcessor {
+func NewDHCPEventProcessor(alertProducer EventProducer) *DHCPEventProcessor {
 	processor := &DHCPEventProcessor{
 		alertProducer: alertProducer,
 		eventCache:    make(map[string][]DHCPSecurityEvent),
@@ -263,9 +268,14 @@ func (p *DHCPEventProcessor) generateAlert(rule SecurityRule, triggerEvent DHCPS
 
 // publishAlert publishes a security alert
 func (p *DHCPEventProcessor) publishAlert(alert SecurityAlert) error {
-	// TODO: Implement Kafka publishing logic here after modularizing Kafka
-	log.Printf("Security alert published: %s - %s", alert.AlertType, alert.Description)
-	return nil
+	if p.alertProducer == nil {
+		return fmt.Errorf("alert producer is not set")
+	}
+	if len(alert.Events) == 0 {
+		log.Printf("Warning: SecurityAlert has no event to publish:%+v", alert)
+	}
+	// Publish the first event asssociated with the alert
+	return p.alertProducer.PublishEvent(alert.Events[0])
 }
 
 // cleanupCache removes old events from cache

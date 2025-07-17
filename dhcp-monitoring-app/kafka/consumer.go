@@ -25,7 +25,7 @@ func NewDHCPEventConsumer(brokers []string, groupID string, topics []string, pro
 	ProcessEvent(dhcp.DHCPSecurityEvent) error
 }) (*DHCPEventConsumer, error) {
 	config := sarama.NewConfig()
-	config.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRoundRobin
+	config.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRoundRobin()
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
 	config.Consumer.Group.Session.Timeout = 10 * time.Second
 	config.Consumer.Group.Heartbeat.Interval = 3 * time.Second

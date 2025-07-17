@@ -169,11 +169,11 @@ func (f *DefaultComponentFactory) CreateEventProducer(brokers []string, topic st
 // CreateEventConsumer creates a new event consumer
 func (f *DefaultComponentFactory) CreateEventConsumer(brokers []string, groupID string, topics []string, processor EventProcessor) (EventConsumer, error) {
 	// Type assertion to get the concrete processor
-	dhcpProcessor, ok := processor.(*dhcp.DHCPEventProcessor)
-	if !ok {
-		return nil, fmt.Errorf("invalid processor type")
-	}
-	return kafka.NewDHCPEventConsumer(brokers, groupID, topics, dhcpProcessor)
+	// dhcpProcessor, ok := processor.(*dhcp.DHCPEventProcessor)
+	// if !ok {
+	// 	return nil, fmt.Errorf("invalid processor type")
+	// }
+	return kafka.NewDHCPEventConsumer(brokers, groupID, topics, processor)
 }
 
 // CreateEventProcessor creates a new event processor

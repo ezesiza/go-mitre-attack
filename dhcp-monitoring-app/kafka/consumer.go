@@ -13,12 +13,17 @@ import (
 )
 
 type DHCPEventConsumer struct {
-	consumer  sarama.ConsumerGroup
-	processor *dhcp.DHCPEventProcessor
-	topics    []string
+	consumer sarama.ConsumerGroup
+	// processor *dhcp.DHCPEventProcessor
+	processor interface {
+		ProcessEvent(dhcp.DHCPSecurityEvent) error
+	}
+	topics []string
 }
 
-func NewDHCPEventConsumer(brokers []string, groupID string, topics []string, processor *dhcp.DHCPEventProcessor) (*DHCPEventConsumer, error) {
+func NewDHCPEventConsumer(brokers []string, groupID string, topics []string, processor interface {
+	ProcessEvent(dhcp.DHCPSecurityEvent) error
+}) (*DHCPEventConsumer, error) {
 	config := sarama.NewConfig()
 	config.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRoundRobin
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
@@ -58,7 +63,9 @@ func (c *DHCPEventConsumer) Close() error {
 }
 
 type ConsumerGroupHandler struct {
-	processor *dhcp.DHCPEventProcessor
+	processor interface {
+		ProcessEvent(dhcp.DHCPSecurityEvent) error
+	}
 }
 
 func (h *ConsumerGroupHandler) Setup(sarama.ConsumerGroupSession) error   { return nil }

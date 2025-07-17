@@ -9,15 +9,19 @@ import (
 
 	"dhcp-monitoring-app/config"
 	"dhcp-monitoring-app/dhcp"
-	"dhcp-monitoring-app/kafka"
 )
 
+type EventProducer interface {
+	PublishEvent(event dhcp.DHCPSecurityEvent) error
+	Close() error
+}
+
 type NetworkMonitoringSimulator struct {
-	producer *kafka.DHCPEventProducer
+	producer EventProducer
 	config   *config.SimulationConfig
 }
 
-func NewNetworkMonitoringSimulator(producer *kafka.DHCPEventProducer) *NetworkMonitoringSimulator {
+func NewNetworkMonitoringSimulator(producer EventProducer) *NetworkMonitoringSimulator {
 	return &NetworkMonitoringSimulator{
 		producer: producer,
 		config:   &config.SimulationConfig{},
@@ -25,7 +29,7 @@ func NewNetworkMonitoringSimulator(producer *kafka.DHCPEventProducer) *NetworkMo
 }
 
 // NewNetworkMonitoringSimulatorWithConfig creates a simulator with custom configuration
-func NewNetworkMonitoringSimulatorWithConfig(producer *kafka.DHCPEventProducer, cfg *config.SimulationConfig) *NetworkMonitoringSimulator {
+func NewNetworkMonitoringSimulatorWithConfig(producer EventProducer, cfg *config.SimulationConfig) *NetworkMonitoringSimulator {
 	return &NetworkMonitoringSimulator{
 		producer: producer,
 		config:   cfg,

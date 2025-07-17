@@ -6,6 +6,8 @@ import (
 	"dhcp-monitoring-app/dhcp"
 	"dhcp-monitoring-app/kafka"
 	"dhcp-monitoring-app/simulator"
+
+	// "dhcp-monitoring-app/simulator"
 	"fmt"
 	"log"
 	"sync"
@@ -182,18 +184,15 @@ func (f *DefaultComponentFactory) CreateEventProcessor(alertProducer EventProduc
 // CreateEventSimulator creates a new event simulator
 func (f *DefaultComponentFactory) CreateEventSimulator(producer EventProducer, simCfg interface{}) EventSimulator {
 	// Type assertion to get the concrete producer
-	kafkaProducer, ok := producer.(*kafka.DHCPEventProducer)
-	if !ok {
-		return nil
-	}
+	// kafkaProducer, ok := producer.(*kafka.DHCPEventProducer)
 
 	// Type assertion to get the simulation config
 	cfg, ok := simCfg.(*config.SimulationConfig)
 	if !ok {
-		return simulator.NewNetworkMonitoringSimulator(kafkaProducer)
+		return simulator.NewNetworkMonitoringSimulator(producer)
 	}
 
-	return simulator.NewNetworkMonitoringSimulatorWithConfig(kafkaProducer, cfg)
+	return simulator.NewNetworkMonitoringSimulatorWithConfig(producer, cfg)
 }
 
 // NewDefaultServiceContainer creates a new service container with all dependencies

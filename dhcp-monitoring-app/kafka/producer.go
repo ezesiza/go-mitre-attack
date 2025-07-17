@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"dhcp-monitoring-app/dhcp"
+	"dhcp-monitoring-app/models"
 
 	"github.com/IBM/sarama"
 )
@@ -33,7 +33,7 @@ func NewDHCPEventProducer(brokers []string, topic string) (*DHCPEventProducer, e
 	}, nil
 }
 
-func (p *DHCPEventProducer) PublishEvent(event dhcp.DHCPSecurityEvent) error {
+func (p *DHCPEventProducer) PublishEvent(event models.DHCPSecurityEvent) error {
 	eventJSON, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("failed to marshal event: %w", err)

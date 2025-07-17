@@ -7,22 +7,22 @@ import (
 	"log"
 	"time"
 
-	"dhcp-monitoring-app/dhcp"
+	"dhcp-monitoring-app/models"
 
 	"github.com/IBM/sarama"
 )
 
 type DHCPEventConsumer struct {
 	consumer sarama.ConsumerGroup
-	// processor *dhcp.DHCPEventProcessor
+	// processor *models.DHCPEventProcessor
 	processor interface {
-		ProcessEvent(dhcp.DHCPSecurityEvent) error
+		ProcessEvent(models.DHCPSecurityEvent) error
 	}
 	topics []string
 }
 
 func NewDHCPEventConsumer(brokers []string, groupID string, topics []string, processor interface {
-	ProcessEvent(dhcp.DHCPSecurityEvent) error
+	ProcessEvent(models.DHCPSecurityEvent) error
 }) (*DHCPEventConsumer, error) {
 	config := sarama.NewConfig()
 	config.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRoundRobin()
@@ -64,7 +64,7 @@ func (c *DHCPEventConsumer) Close() error {
 
 type ConsumerGroupHandler struct {
 	processor interface {
-		ProcessEvent(dhcp.DHCPSecurityEvent) error
+		ProcessEvent(models.DHCPSecurityEvent) error
 	}
 }
 
@@ -73,7 +73,7 @@ func (h *ConsumerGroupHandler) Cleanup(sarama.ConsumerGroupSession) error { retu
 
 func (h *ConsumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for message := range claim.Messages() {
-		var event dhcp.DHCPSecurityEvent
+		var event models.DHCPSecurityEvent
 		if err := json.Unmarshal(message.Value, &event); err != nil {
 			log.Printf("Failed to unmarshal event: %v", err)
 			continue

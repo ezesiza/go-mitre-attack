@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"dhcp-monitoring-app/config"
-	"dhcp-monitoring-app/dhcp"
+	"dhcp-monitoring-app/models"
 )
 
 type EventProducer interface {
-	PublishEvent(event dhcp.DHCPSecurityEvent) error
+	PublishEvent(event models.DHCPSecurityEvent) error
 	Close() error
 }
 
@@ -60,7 +60,7 @@ func (s *NetworkMonitoringSimulator) SimulateEvents(ctx context.Context) {
 	}
 }
 
-func (s *NetworkMonitoringSimulator) generateRandomEvent(id int) dhcp.DHCPSecurityEvent {
+func (s *NetworkMonitoringSimulator) generateRandomEvent(id int) models.DHCPSecurityEvent {
 	// Use configured event types if available, otherwise use defaults
 	eventTypes := s.config.EventTypes
 	if len(eventTypes) == 0 {
@@ -71,18 +71,18 @@ func (s *NetworkMonitoringSimulator) generateRandomEvent(id int) dhcp.DHCPSecuri
 	}
 
 	// Convert string event types to DHCPEventType
-	dhcpEventTypes := make([]dhcp.DHCPEventType, len(eventTypes))
+	dhcpEventTypes := make([]models.DHCPEventType, len(eventTypes))
 	for i, eventType := range eventTypes {
-		dhcpEventTypes[i] = dhcp.DHCPEventType(eventType)
+		dhcpEventTypes[i] = models.DHCPEventType(eventType)
 	}
 
 	eventType := dhcpEventTypes[id%len(dhcpEventTypes)]
 	severity := "LOW"
 
 	switch eventType {
-	case dhcp.DHCPRogueServer, dhcp.DHCPSpoofing:
+	case models.DHCPRogueServer, models.DHCPSpoofing:
 		severity = "HIGH"
-	case dhcp.DHCPStarvation:
+	case models.DHCPStarvation:
 		severity = "MEDIUM"
 	}
 
@@ -95,7 +95,7 @@ func (s *NetworkMonitoringSimulator) generateRandomEvent(id int) dhcp.DHCPSecuri
 	// Randomly select a source IP from the configured list
 	selectedIP := sourceIPs[rand.Intn(len(sourceIPs))]
 
-	return dhcp.DHCPSecurityEvent{
+	return models.DHCPSecurityEvent{
 		ID:            fmt.Sprintf("event_%d", id),
 		Timestamp:     time.Now(),
 		EventType:     eventType,

@@ -3,8 +3,8 @@ package platform
 import (
 	"context"
 	"dhcp-monitoring-app/config"
-	"dhcp-monitoring-app/dhcp"
 	"dhcp-monitoring-app/kafka"
+	"dhcp-monitoring-app/models"
 	"dhcp-monitoring-app/simulator"
 
 	// "dhcp-monitoring-app/simulator"
@@ -25,7 +25,7 @@ type DHCPSecurityPlatform struct {
 	/* config        *config.AppConfig
 	eventProducer *kafka.DHCPEventProducer
 	alertProducer *kafka.DHCPEventProducer
-	processor     *dhcp.DHCPEventProcessor
+	processor     *models.DHCPEventProcessor
 	consumer      *kafka.DHCPEventConsumer
 	simulator     *simulator.NetworkMonitoringSimulator */
 }
@@ -113,7 +113,7 @@ func (f *DefaultComponentFactory) CreateEventConsumer(brokers []string, groupID 
 
 // CreateEventProcessor creates a new event processor
 func (f *DefaultComponentFactory) CreateEventProcessor(alertProducer EventProducer) EventProcessor {
-	return dhcp.NewDHCPEventProcessor(alertProducer)
+	return models.NewDHCPEventProcessor(alertProducer)
 }
 
 // CreateEventSimulator creates a new event simulator

@@ -3,12 +3,12 @@ package platform
 import (
 	"context"
 	"dhcp-monitoring-app/config"
-	"dhcp-monitoring-app/dhcp"
+	"dhcp-monitoring-app/models"
 )
 
 // EventProducer defines the interface for publishing DHCP events
 type EventProducer interface {
-	PublishEvent(event dhcp.DHCPSecurityEvent) error
+	PublishEvent(event models.DHCPSecurityEvent) error
 	Close() error
 }
 
@@ -20,7 +20,7 @@ type EventConsumer interface {
 
 // EventProcessor defines the interface for processing DHCP events
 type EventProcessor interface {
-	ProcessEvent(event dhcp.DHCPSecurityEvent) error
+	ProcessEvent(event models.DHCPSecurityEvent) error
 }
 
 // EventSimulator defines the interface for simulating DHCP events

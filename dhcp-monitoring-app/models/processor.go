@@ -1,30 +1,29 @@
 package models
 
 import (
+	"dhcp-monitoring-app/interfaces"
+	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
 	"time"
 )
 
-type EventProducer interface {
-	PublishEvent(event DHCPSecurityEvent) error
-	Close() error
-}
-
 type DHCPEventProcessor struct {
 	// alertProducer will be set later, after Kafka modularization
-	alertProducer EventProducer
-	eventCache    map[string][]DHCPSecurityEvent
-	cacheMutex    sync.RWMutex
-	alertRules    []SecurityRule
+	alertProducer   interfaces.EventProducer
+	eventCache      map[string][]DHCPSecurityEvent
+	cacheMutex      sync.RWMutex
+	alertRules      []SecurityRule
+	websocketServer interfaces.WebSocketServer
 }
 
 // NewDHCPEventProcessor creates a new event processor
-func NewDHCPEventProcessor(alertProducer EventProducer) *DHCPEventProcessor {
+func NewDHCPEventProcessor(alertProducer interfaces.EventProducer, websocketServer interfaces.WebSocketServer) *DHCPEventProcessor {
 	processor := &DHCPEventProcessor{
-		alertProducer: alertProducer,
-		eventCache:    make(map[string][]DHCPSecurityEvent),
+		alertProducer:   alertProducer,
+		eventCache:      make(map[string][]DHCPSecurityEvent),
+		websocketServer: websocketServer,
 		alertRules: []SecurityRule{
 			{
 				Name:        "DHCP Starvation Attack",
@@ -195,19 +194,32 @@ func NewDHCPEventProcessor(alertProducer EventProducer) *DHCPEventProcessor {
 }
 
 // ProcessEvent processes incoming DHCP events
-func (p *DHCPEventProcessor) ProcessEvent(event DHCPSecurityEvent) error {
+func (p *DHCPEventProcessor) ProcessEvent(event interface{}) error {
+	dhcpEvent, ok := event.(DHCPSecurityEvent)
+	if !ok {
+		return fmt.Errorf("invalid event type: expected DHCPSecurityEvent, got %T", event)
+	}
+
 	p.cacheMutex.Lock()
 	defer p.cacheMutex.Unlock()
 
 	// Cache the event
-	key := fmt.Sprintf("%s_%s", event.SourceIP, event.EventType)
+	key := fmt.Sprintf("%s_%s", dhcpEvent.SourceIP, dhcpEvent.EventType)
 	// Appending to a nil slice is safe in Go; no need to check if key exists
-	p.eventCache[key] = append(p.eventCache[key], event)
+	p.eventCache[key] = append(p.eventCache[key], dhcpEvent)
+
+	// Broadcast every event to WebSocket clients
+	if p.websocketServer != nil {
+		if data, err := json.Marshal(dhcpEvent); err == nil {
+			log.Printf("Broadcasting event to WebSocket clients: %s", string(data))
+			p.websocketServer.Broadcast(data)
+		}
+	}
 
 	// Check security rules
 	for _, rule := range p.alertRules {
-		if p.checkRule(rule, event) {
-			alert := p.generateAlert(rule, event)
+		if p.checkRule(rule, dhcpEvent) {
+			alert := p.generateAlert(rule, dhcpEvent)
 			if err := p.publishAlert(alert); err != nil {
 				log.Printf("Failed to publish alert: %v", err)
 			}
@@ -243,7 +255,7 @@ func (p *DHCPEventProcessor) checkRule(rule SecurityRule, event DHCPSecurityEven
 			count++
 		}
 	}
-	log.Printf("count: %d, rule.Threshold: %d", count, rule.Threshold)
+	// log.Printf("count: %d, rule.Threshold: %d", count, rule.Threshold)
 	return count >= rule.Threshold
 }
 
@@ -268,13 +280,24 @@ func (p *DHCPEventProcessor) generateAlert(rule SecurityRule, triggerEvent DHCPS
 
 // publishAlert publishes a security alert
 func (p *DHCPEventProcessor) publishAlert(alert SecurityAlert) error {
+	if p.websocketServer != nil {
+		if data, err := json.Marshal(alert); err == nil {
+			p.websocketServer.Broadcast(data)
+		}
+	}
+	return p.publishToKafka(alert)
+}
+
+func (p *DHCPEventProcessor) publishToKafka(alert SecurityAlert) error {
 	if p.alertProducer == nil {
 		return fmt.Errorf("alert producer is not set")
 	}
 	if len(alert.Events) == 0 {
 		log.Printf("Warning: SecurityAlert has no event to publish:%+v", alert)
 	}
-	// Publish the first event asssociated with the alert
+	// Publish the first event associated with the alert
+	log.Printf("Security alert published: %s - %s", alert.AlertType, alert.Description)
+	// p.websocketServer.Broadcast([]byte("kafka broadcast"))
 	return p.alertProducer.PublishEvent(alert.Events[0])
 }
 

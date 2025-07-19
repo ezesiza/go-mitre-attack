@@ -3,11 +3,11 @@ package platform
 import (
 	"context"
 	"dhcp-monitoring-app/config"
+	"dhcp-monitoring-app/interfaces"
 	"dhcp-monitoring-app/kafka"
 	"dhcp-monitoring-app/models"
 	"dhcp-monitoring-app/simulator"
-
-	// "dhcp-monitoring-app/simulator"
+	"dhcp-monitoring-app/websockets"
 	"fmt"
 	"log"
 	"sync"
@@ -22,23 +22,18 @@ type DHCPSecurityPlatform struct {
 	wg        sync.WaitGroup
 	ctx       context.Context
 	cancel    context.CancelFunc
-	/* config        *config.AppConfig
-	eventProducer *kafka.DHCPEventProducer
-	alertProducer *kafka.DHCPEventProducer
-	processor     *models.DHCPEventProcessor
-	consumer      *kafka.DHCPEventConsumer
-	simulator     *simulator.NetworkMonitoringSimulator */
 }
 
 // DefaultServiceContainer implements ServiceContainer with dependency injection
 type DefaultServiceContainer struct {
-	config         ConfigProvider
-	factory        ComponentFactory
-	eventProducer  EventProducer
-	alertProducer  EventProducer
-	eventConsumer  EventConsumer
-	eventProcessor EventProcessor
-	eventSimulator EventSimulator
+	config          ConfigProvider
+	factory         ComponentFactory
+	eventProducer   EventProducer
+	alertProducer   EventProducer
+	eventConsumer   EventConsumer
+	eventProcessor  EventProcessor
+	eventSimulator  EventSimulator
+	websocketServer interfaces.WebSocketServer
 }
 
 // NewDHCPSecurityPlatform creates a new platform instance with dependency injection
@@ -55,7 +50,18 @@ func NewDHCPSecurityPlatform(container ServiceContainer) *DHCPSecurityPlatform {
 
 // Start initializes and starts all platform components
 func (p *DHCPSecurityPlatform) Start(ctx context.Context) error {
-	// var wg sync.WaitGroup
+	log.Println("Starting DHCP Security Platform")
+
+	// Start websocket server if present
+	if ws := p.container.GetWebSocketServer(); ws != nil {
+		p.wg.Add(1)
+		go func() {
+			defer p.wg.Done()
+			if err := ws.Start(":8080", "/ws"); err != nil {
+				log.Printf("Websocket server error: %v", err)
+			}
+		}()
+	}
 
 	// Start consumer
 	p.wg.Add(1)
@@ -85,6 +91,11 @@ func (p *DHCPSecurityPlatform) Stop() error {
 
 	log.Println("Stopping DHCP Security Platform...")
 
+	// Stop websocket server if present
+	if ws := p.container.GetWebSocketServer(); ws != nil {
+		ws.Stop()
+	}
+
 	// Cancel context to stop all goroutines
 	p.cancel()
 
@@ -112,8 +123,8 @@ func (f *DefaultComponentFactory) CreateEventConsumer(brokers []string, groupID 
 }
 
 // CreateEventProcessor creates a new event processor
-func (f *DefaultComponentFactory) CreateEventProcessor(alertProducer EventProducer) EventProcessor {
-	return models.NewDHCPEventProcessor(alertProducer)
+func (f *DefaultComponentFactory) CreateEventProcessor(alertProducer EventProducer, websocketServer interfaces.WebSocketServer) EventProcessor {
+	return models.NewDHCPEventProcessor(alertProducer, websocketServer)
 }
 
 // CreateEventSimulator creates a new event simulator
@@ -148,6 +159,9 @@ func NewDefaultServiceContainer(cfg ConfigProvider) (*DefaultServiceContainer, e
 func (c *DefaultServiceContainer) initialize() error {
 	kafkaConfig := c.config.GetKafkaConfig()
 
+	// Create websocket server first
+	c.websocketServer = websockets.NewWebSocketServer()
+
 	// Create event producer
 	eventProducer, err := c.factory.CreateEventProducer(kafkaConfig.Brokers, kafkaConfig.DHCPEventsTopic)
 	if err != nil {
@@ -162,8 +176,8 @@ func (c *DefaultServiceContainer) initialize() error {
 	}
 	c.alertProducer = alertProducer
 
-	// Create processor
-	c.eventProcessor = c.factory.CreateEventProcessor(c.alertProducer)
+	// Create processor with correct websocketServer type
+	c.eventProcessor = c.factory.CreateEventProcessor(c.alertProducer, c.websocketServer)
 
 	// Create consumer
 	consumer, err := c.factory.CreateEventConsumer(
@@ -209,6 +223,11 @@ func (c *DefaultServiceContainer) GetEventProcessor() EventProcessor {
 // GetEventSimulator returns the event simulator
 func (c *DefaultServiceContainer) GetEventSimulator() EventSimulator {
 	return c.eventSimulator
+}
+
+// GetWebSocketServer returns the websocket server
+func (c *DefaultServiceContainer) GetWebSocketServer() interfaces.WebSocketServer {
+	return c.websocketServer
 }
 
 // GetConfig returns the configuration provider

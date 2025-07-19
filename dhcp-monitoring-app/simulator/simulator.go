@@ -8,20 +8,16 @@ import (
 	"time"
 
 	"dhcp-monitoring-app/config"
+	"dhcp-monitoring-app/interfaces"
 	"dhcp-monitoring-app/models"
 )
 
-type EventProducer interface {
-	PublishEvent(event models.DHCPSecurityEvent) error
-	Close() error
-}
-
 type NetworkMonitoringSimulator struct {
-	producer EventProducer
+	producer interfaces.EventProducer
 	config   *config.SimulationConfig
 }
 
-func NewNetworkMonitoringSimulator(producer EventProducer) *NetworkMonitoringSimulator {
+func NewNetworkMonitoringSimulator(producer interfaces.EventProducer) *NetworkMonitoringSimulator {
 	return &NetworkMonitoringSimulator{
 		producer: producer,
 		config:   &config.SimulationConfig{},
@@ -29,7 +25,7 @@ func NewNetworkMonitoringSimulator(producer EventProducer) *NetworkMonitoringSim
 }
 
 // NewNetworkMonitoringSimulatorWithConfig creates a simulator with custom configuration
-func NewNetworkMonitoringSimulatorWithConfig(producer EventProducer, cfg *config.SimulationConfig) *NetworkMonitoringSimulator {
+func NewNetworkMonitoringSimulatorWithConfig(producer interfaces.EventProducer, cfg *config.SimulationConfig) *NetworkMonitoringSimulator {
 	return &NetworkMonitoringSimulator{
 		producer: producer,
 		config:   cfg,
@@ -52,8 +48,12 @@ func (s *NetworkMonitoringSimulator) SimulateEvents(ctx context.Context) {
 			return
 		case <-ticker.C:
 			event := s.generateRandomEvent(eventID)
+			// Log event generation
+			log.Printf("Simulator generated event: type=%s, source_ip=%s", event.EventType, event.SourceIP)
 			if err := s.producer.PublishEvent(event); err != nil {
 				log.Printf("Failed to publish simulated event: %v", err)
+			} else {
+				log.Printf("Simulator published event: type=%s, source_ip=%s", event.EventType, event.SourceIP)
 			}
 			eventID++
 		}

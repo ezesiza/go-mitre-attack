@@ -7,23 +7,19 @@ import (
 	"log"
 	"time"
 
+	"dhcp-monitoring-app/interfaces"
 	"dhcp-monitoring-app/models"
 
 	"github.com/IBM/sarama"
 )
 
 type DHCPEventConsumer struct {
-	consumer sarama.ConsumerGroup
-	// processor *models.DHCPEventProcessor
-	processor interface {
-		ProcessEvent(models.DHCPSecurityEvent) error
-	}
-	topics []string
+	consumer  sarama.ConsumerGroup
+	processor interfaces.EventProcessor
+	topics    []string
 }
 
-func NewDHCPEventConsumer(brokers []string, groupID string, topics []string, processor interface {
-	ProcessEvent(models.DHCPSecurityEvent) error
-}) (*DHCPEventConsumer, error) {
+func NewDHCPEventConsumer(brokers []string, groupID string, topics []string, processor interfaces.EventProcessor) (*DHCPEventConsumer, error) {
 	config := sarama.NewConfig()
 	config.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRoundRobin()
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
@@ -63,9 +59,7 @@ func (c *DHCPEventConsumer) Close() error {
 }
 
 type ConsumerGroupHandler struct {
-	processor interface {
-		ProcessEvent(models.DHCPSecurityEvent) error
-	}
+	processor interfaces.EventProcessor
 }
 
 func (h *ConsumerGroupHandler) Setup(sarama.ConsumerGroupSession) error   { return nil }
@@ -74,6 +68,9 @@ func (h *ConsumerGroupHandler) Cleanup(sarama.ConsumerGroupSession) error { retu
 func (h *ConsumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for message := range claim.Messages() {
 		var event models.DHCPSecurityEvent
+		if err := json.Unmarshal(message.Value, &event); err == nil {
+			log.Printf("Consumer received event from Kafka: type=%s, source_ip=%s", event.EventType, event.SourceIP)
+		}
 		if err := json.Unmarshal(message.Value, &event); err != nil {
 			log.Printf("Failed to unmarshal event: %v", err)
 			continue

@@ -3,12 +3,12 @@ package platform
 import (
 	"context"
 	"dhcp-monitoring-app/config"
-	"dhcp-monitoring-app/models"
+	"dhcp-monitoring-app/interfaces"
 )
 
 // EventProducer defines the interface for publishing DHCP events
 type EventProducer interface {
-	PublishEvent(event models.DHCPSecurityEvent) error
+	PublishEvent(event interface{}) error
 	Close() error
 }
 
@@ -20,7 +20,7 @@ type EventConsumer interface {
 
 // EventProcessor defines the interface for processing DHCP events
 type EventProcessor interface {
-	ProcessEvent(event models.DHCPSecurityEvent) error
+	ProcessEvent(event interface{}) error
 }
 
 // EventSimulator defines the interface for simulating DHCP events
@@ -46,7 +46,7 @@ type Platform interface {
 type ComponentFactory interface {
 	CreateEventProducer(brokers []string, topic string) (EventProducer, error)
 	CreateEventConsumer(brokers []string, groupID string, topics []string, processor EventProcessor) (EventConsumer, error)
-	CreateEventProcessor(alertProducer EventProducer) EventProcessor
+	CreateEventProcessor(alertProducer EventProducer, websocketServer interfaces.WebSocketServer) EventProcessor
 	CreateEventSimulator(producer EventProducer, config interface{}) EventSimulator
 }
 
@@ -58,5 +58,6 @@ type ServiceContainer interface {
 	GetEventProcessor() EventProcessor
 	GetEventSimulator() EventSimulator
 	GetConfig() ConfigProvider
+	GetWebSocketServer() interfaces.WebSocketServer
 	Close() error
 }

@@ -1,6 +1,7 @@
 package websockets
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -13,6 +14,7 @@ type WebSocketServer struct {
 	upgrader websocket.Upgrader
 	clients  map[*websocket.Conn]bool
 	lock     sync.Mutex
+	srv      *http.Server // Add http.Server for graceful shutdown
 }
 
 func NewWebSocketServer() *WebSocketServer {
@@ -32,8 +34,8 @@ func (s *WebSocketServer) HandleWs(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Websocket upgrade error: %v", err)
 	}
 	s.lock.Lock()
+	defer s.lock.Unlock()
 	s.clients[conn] = true
-	s.lock.Unlock()
 
 	go s.readPump(conn)
 }
@@ -72,12 +74,17 @@ func (s *WebSocketServer) Broadcast(message []byte) {
 var _ interface{ Broadcast([]byte) } = (*WebSocketServer)(nil)
 
 func (s *WebSocketServer) Start(addr, path string) error {
-	http.HandleFunc(path, s.HandleWs)
+	mux := http.NewServeMux()
+	mux.HandleFunc(path, s.HandleWs)
+	s.srv = &http.Server{Addr: addr, Handler: mux}
 	fmt.Printf("Websocket server listening at ws://%s%s", addr, path)
-	return http.ListenAndServe(addr, nil)
+	return s.srv.ListenAndServe()
 }
 
 func (s *WebSocketServer) Stop() {
+	if s.srv != nil {
+		s.srv.Shutdown(context.Background())
+	}
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	for client := range s.clients {

@@ -295,9 +295,6 @@ func (p *DHCPEventProcessor) publishToKafka(alert SecurityAlert) error {
 	if len(alert.Events) == 0 {
 		log.Printf("Warning: SecurityAlert has no event to publish:%+v", alert)
 	}
-	// Publish the first event associated with the alert
-	log.Printf("Security alert published: %s - %s", alert.AlertType, alert.Description)
-	// p.websocketServer.Broadcast([]byte("kafka broadcast"))
 	return p.alertProducer.PublishEvent(alert.Events[0])
 }
 

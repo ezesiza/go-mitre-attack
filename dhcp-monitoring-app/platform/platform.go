@@ -3,7 +3,6 @@ package platform
 import (
 	"context"
 	"dhcp-monitoring-app/config"
-	"dhcp-monitoring-app/interfaces"
 	"dhcp-monitoring-app/kafka"
 	"dhcp-monitoring-app/models"
 	"dhcp-monitoring-app/simulator"
@@ -28,12 +27,12 @@ type DHCPSecurityPlatform struct {
 type DefaultServiceContainer struct {
 	config          ConfigProvider
 	factory         ComponentFactory
-	eventProducer   EventProducer
-	alertProducer   EventProducer
+	eventProducer   models.EventProducer
+	alertProducer   models.EventProducer
 	eventConsumer   EventConsumer
-	eventProcessor  EventProcessor
+	eventProcessor  models.EventProcessor
 	eventSimulator  EventSimulator
-	websocketServer interfaces.WebSocketServer
+	websocketServer models.WebSocketServer
 }
 
 // NewDHCPSecurityPlatform creates a new platform instance with dependency injection
@@ -112,23 +111,23 @@ func (p *DHCPSecurityPlatform) Stop() error {
 }
 
 // CreateEventProducer creates a new event producer
-func (f *DefaultComponentFactory) CreateEventProducer(brokers []string, topic string) (EventProducer, error) {
+func (f *DefaultComponentFactory) CreateEventProducer(brokers []string, topic string) (models.EventProducer, error) {
 	return kafka.NewDHCPEventProducer(brokers, topic)
 }
 
 // CreateEventConsumer creates a new event consumer
-func (f *DefaultComponentFactory) CreateEventConsumer(brokers []string, groupID string, topics []string, processor EventProcessor) (EventConsumer, error) {
+func (f *DefaultComponentFactory) CreateEventConsumer(brokers []string, groupID string, topics []string, processor models.EventProcessor) (EventConsumer, error) {
 
 	return kafka.NewDHCPEventConsumer(brokers, groupID, topics, processor)
 }
 
 // CreateEventProcessor creates a new event processor
-func (f *DefaultComponentFactory) CreateEventProcessor(alertProducer EventProducer, websocketServer interfaces.WebSocketServer) EventProcessor {
+func (f *DefaultComponentFactory) CreateEventProcessor(alertProducer models.EventProducer, websocketServer models.WebSocketServer) models.EventProcessor {
 	return models.NewDHCPEventProcessor(alertProducer, websocketServer)
 }
 
 // CreateEventSimulator creates a new event simulator
-func (f *DefaultComponentFactory) CreateEventSimulator(producer EventProducer, simCfg interface{}) EventSimulator {
+func (f *DefaultComponentFactory) CreateEventSimulator(producer models.EventProducer, simCfg interface{}) EventSimulator {
 	// Type assertion to get the concrete producer
 	// kafkaProducer, ok := producer.(*kafka.DHCPEventProducer)
 
@@ -201,12 +200,12 @@ func (c *DefaultServiceContainer) initialize() error {
 }
 
 // GetEventProducer returns the event producer
-func (c *DefaultServiceContainer) GetEventProducer() EventProducer {
+func (c *DefaultServiceContainer) GetEventProducer() models.EventProducer {
 	return c.eventProducer
 }
 
 // GetAlertProducer returns the alert producer
-func (c *DefaultServiceContainer) GetAlertProducer() EventProducer {
+func (c *DefaultServiceContainer) GetAlertProducer() models.EventProducer {
 	return c.alertProducer
 }
 
@@ -216,7 +215,7 @@ func (c *DefaultServiceContainer) GetEventConsumer() EventConsumer {
 }
 
 // GetEventProcessor returns the event processor
-func (c *DefaultServiceContainer) GetEventProcessor() EventProcessor {
+func (c *DefaultServiceContainer) GetEventProcessor() models.EventProcessor {
 	return c.eventProcessor
 }
 
@@ -226,7 +225,7 @@ func (c *DefaultServiceContainer) GetEventSimulator() EventSimulator {
 }
 
 // GetWebSocketServer returns the websocket server
-func (c *DefaultServiceContainer) GetWebSocketServer() interfaces.WebSocketServer {
+func (c *DefaultServiceContainer) GetWebSocketServer() models.WebSocketServer {
 	return c.websocketServer
 }
 

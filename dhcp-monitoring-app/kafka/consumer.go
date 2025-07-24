@@ -7,7 +7,6 @@ import (
 	"log"
 	"time"
 
-	"dhcp-monitoring-app/interfaces"
 	"dhcp-monitoring-app/models"
 
 	"github.com/IBM/sarama"
@@ -15,11 +14,11 @@ import (
 
 type DHCPEventConsumer struct {
 	consumer  sarama.ConsumerGroup
-	processor interfaces.EventProcessor
+	processor models.EventProcessor
 	topics    []string
 }
 
-func NewDHCPEventConsumer(brokers []string, groupID string, topics []string, processor interfaces.EventProcessor) (*DHCPEventConsumer, error) {
+func NewDHCPEventConsumer(brokers []string, groupID string, topics []string, processor models.EventProcessor) (*DHCPEventConsumer, error) {
 	config := sarama.NewConfig()
 	config.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRoundRobin()
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
@@ -59,7 +58,7 @@ func (c *DHCPEventConsumer) Close() error {
 }
 
 type ConsumerGroupHandler struct {
-	processor interfaces.EventProcessor
+	processor models.EventProcessor
 }
 
 func (h *ConsumerGroupHandler) Setup(sarama.ConsumerGroupSession) error   { return nil }

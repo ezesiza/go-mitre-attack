@@ -3,24 +3,13 @@ package platform
 import (
 	"context"
 	"dhcp-monitoring-app/config"
-	"dhcp-monitoring-app/interfaces"
+	"dhcp-monitoring-app/models"
 )
-
-// EventProducer defines the interface for publishing DHCP events
-type EventProducer interface {
-	PublishEvent(event interface{}) error
-	Close() error
-}
 
 // EventConsumer defines the interface for consuming DHCP events
 type EventConsumer interface {
 	Start(ctx context.Context) error
 	Close() error
-}
-
-// EventProcessor defines the interface for processing DHCP events
-type EventProcessor interface {
-	ProcessEvent(event interface{}) error
 }
 
 // EventSimulator defines the interface for simulating DHCP events
@@ -44,20 +33,20 @@ type Platform interface {
 
 // ComponentFactory defines the interface for creating platform components
 type ComponentFactory interface {
-	CreateEventProducer(brokers []string, topic string) (EventProducer, error)
-	CreateEventConsumer(brokers []string, groupID string, topics []string, processor EventProcessor) (EventConsumer, error)
-	CreateEventProcessor(alertProducer EventProducer, websocketServer interfaces.WebSocketServer) EventProcessor
-	CreateEventSimulator(producer EventProducer, config interface{}) EventSimulator
+	CreateEventProducer(brokers []string, topic string) (models.EventProducer, error)
+	CreateEventConsumer(brokers []string, groupID string, topics []string, processor models.EventProcessor) (EventConsumer, error)
+	CreateEventProcessor(alertProducer models.EventProducer, websocketServer models.WebSocketServer) models.EventProcessor
+	CreateEventSimulator(producer models.EventProducer, config interface{}) EventSimulator
 }
 
 // ServiceContainer defines the interface for managing service dependencies
 type ServiceContainer interface {
-	GetEventProducer() EventProducer
-	GetAlertProducer() EventProducer
+	GetEventProducer() models.EventProducer
+	GetAlertProducer() models.EventProducer
 	GetEventConsumer() EventConsumer
-	GetEventProcessor() EventProcessor
+	GetEventProcessor() models.EventProcessor
 	GetEventSimulator() EventSimulator
 	GetConfig() ConfigProvider
-	GetWebSocketServer() interfaces.WebSocketServer
+	GetWebSocketServer() models.WebSocketServer
 	Close() error
 }

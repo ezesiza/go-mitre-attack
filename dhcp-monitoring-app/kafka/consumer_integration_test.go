@@ -19,13 +19,10 @@ type mockProcessor struct {
 	mu       sync.Mutex
 }
 
-func (m *mockProcessor) ProcessEvent(event interface{}) error {
+func (m *mockProcessor) ProcessEvent(event models.DHCPSecurityEvent) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if e, ok := event.(models.DHCPSecurityEvent); ok {
-		m.received = append(m.received, e)
-		return nil
-	}
+	m.received = append(m.received, event)
 	return nil
 }
 

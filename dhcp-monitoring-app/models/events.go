@@ -59,3 +59,21 @@ type SecurityRule struct {
 	Severity    string
 	Description string
 }
+
+// EventProducer defines the interface for publishing events
+type EventProducer interface {
+	PublishEvent(event DHCPSecurityEvent) error
+	Close() error
+}
+
+// WebSocketServer defines the interface for websocket broadcasting
+
+type WebSocketServer interface {
+	Start(addr, path string) error
+	Stop()
+	Broadcast(message []byte)
+}
+
+type EventProcessor interface {
+	ProcessEvent(event DHCPSecurityEvent) error
+}

@@ -33,29 +33,29 @@ func NewDHCPEventProducer(brokers []string, topic string) (*DHCPEventProducer, e
 	}, nil
 }
 
-func (p *DHCPEventProducer) PublishEvent(event interface{}) error {
-	dhcpEvent, ok := event.(models.DHCPSecurityEvent)
-	if !ok {
-		return fmt.Errorf("invalid event type: expected DHCPSecurityEvent, got %T", event)
-	}
+func (p *DHCPEventProducer) PublishEvent(event models.DHCPSecurityEvent) error {
+	// dhcpEvent, ok := event.(models.DHCPSecurityEvent)
+	// if !ok {
+	// 	return fmt.Errorf("invalid event type: expected DHCPSecurityEvent, got %T", event)
+	// }
 
-	eventJSON, err := json.Marshal(dhcpEvent)
+	eventJSON, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("failed to marshal event: %w", err)
 	}
 
 	msg := &sarama.ProducerMessage{
 		Topic: p.topic,
-		Key:   sarama.StringEncoder(dhcpEvent.ID),
+		Key:   sarama.StringEncoder(event.ID),
 		Value: sarama.ByteEncoder(eventJSON),
 		Headers: []sarama.RecordHeader{
 			{
 				Key:   []byte("event_type"),
-				Value: []byte(dhcpEvent.EventType),
+				Value: []byte(event.EventType),
 			},
 			{
 				Key:   []byte("severity"),
-				Value: []byte(dhcpEvent.Severity),
+				Value: []byte(event.Severity),
 			},
 		},
 	}

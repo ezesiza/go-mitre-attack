@@ -8,16 +8,15 @@ import (
 	"time"
 
 	"dhcp-monitoring-app/config"
-	"dhcp-monitoring-app/interfaces"
 	"dhcp-monitoring-app/models"
 )
 
 type NetworkMonitoringSimulator struct {
-	producer interfaces.EventProducer
+	producer models.EventProducer
 	config   *config.SimulationConfig
 }
 
-func NewNetworkMonitoringSimulator(producer interfaces.EventProducer) *NetworkMonitoringSimulator {
+func NewNetworkMonitoringSimulator(producer models.EventProducer) *NetworkMonitoringSimulator {
 	return &NetworkMonitoringSimulator{
 		producer: producer,
 		config:   &config.SimulationConfig{},
@@ -25,7 +24,7 @@ func NewNetworkMonitoringSimulator(producer interfaces.EventProducer) *NetworkMo
 }
 
 // NewNetworkMonitoringSimulatorWithConfig creates a simulator with custom configuration
-func NewNetworkMonitoringSimulatorWithConfig(producer interfaces.EventProducer, cfg *config.SimulationConfig) *NetworkMonitoringSimulator {
+func NewNetworkMonitoringSimulatorWithConfig(producer models.EventProducer, cfg *config.SimulationConfig) *NetworkMonitoringSimulator {
 	return &NetworkMonitoringSimulator{
 		producer: producer,
 		config:   cfg,
